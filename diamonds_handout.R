@@ -1,0 +1,97 @@
+library(ggplot2)
+data(diamonds)
+library(tidyverse)
+
+newDiamonds <- diamonds |>
+  filter_out(x == 0 | y == 0 | z == 0) |>
+  dplyr::select(cut, x, y, z)
+
+fairCut <- newDiamonds |>
+  filter(cut == "Fair")
+
+goodCut <- newDiamonds |>
+  filter(cut == "Good")
+
+vGoodCut <- newDiamonds |>
+  filter(cut == "Very Good")
+
+premiumCut <- newDiamonds |>
+  filter(cut == "Premium")
+
+idealCut <- newDiamonds |>
+  filter(cut == "Ideal")
+
+targetStats <- function(dataVector) {
+  c(
+    count = length(dataVector),
+    summary = summary(dataVector),
+    mad = mad(dataVector),
+    sasd = sd(dataVector)
+  )
+}
+
+fairCutVals <- sapply(
+  X = c("x", "y", "z"),
+  FUN = function(x) {targetStats(fairCut[[x]])}
+)
+
+goodCutVals <- sapply(
+  X = c("x", "y", "z"),
+  FUN = function(x) {targetStats(goodCut[[x]])}
+)
+
+vGoodCutVals <- sapply(
+  X = c("x", "y", "z"),
+  FUN = function(x) {targetStats(vGoodCut[[x]])}
+)
+
+premiumCutVals <- sapply(
+  X = c("x", "y", "z"),
+  FUN = function(x) {targetStats(premiumCut[[x]])}
+)
+
+idealCutVals <- sapply(
+  X = c("x", "y", "z"),
+  FUN = function(x) {targetStats(idealCut[[x]])}
+)
+
+statVals <- bind_cols(fairCutVals, goodCutVals, vGoodCutVals, premiumCutVals, idealCutVals)
+
+statVals <- statVals |>
+  rename(
+    fair_x = 1,
+    fair_y = 2,
+    fair_z = 3,
+    good_x = 4,
+    good_y = 5,
+    good_z = 6,
+    vGood_x = 7,
+    vGood_y = 8,
+    vGood_z = 9,
+    premium_x = 10,
+    premium_y = 11,
+    premium_z = 12,
+    ideal_x = 13,
+    ideal_y = 14,
+    ideal_z = 15
+  ) |>
+  mutate(
+    stat = c("count", "Min", "Q1", "Med", "SAM", "Q3", "Max", "MAD", "SASD"),
+    .before = 1
+  ) |>
+  pivot_longer(
+    cols = c("fair_x", "fair_y", "fair_z", "good_x", "good_y", "good_z",
+             "vGood_x", "vGood_y", "vGood_z", "premium_x", "premium_y",
+             "premium_z", "ideal_x", "ideal_y", "ideal_z"),
+    names_to = "cut_var",
+    values_to = "value"
+  ) |>
+  separate_wider_delim(
+    cols = cut_var,
+    delim = "_",
+    names = c("Cut", "Variable")
+  ) |>
+  pivot_wider(
+    names_from = stat,
+    values_from = value
+  )

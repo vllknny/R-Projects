@@ -1,0 +1,26 @@
+{
+    "id": "400932FB",
+    "path": "~/VSC/R Projects/diamonds_review.R",
+    "project_path": null,
+    "type": "r_source",
+    "hash": "3492869288",
+    "contents": "",
+    "dirty": false,
+    "created": 1772049927890.0,
+    "source_on_save": false,
+    "relative_order": 6,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "37,0",
+        "scrollLine": "18"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1772050600,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1772050600,
+    "read_only": false,
+    "read_only_alternatives": []
+}

@@ -1,0 +1,54 @@
+install.packages('googlesheets4') # Run once if you don't have this package
+library(googlesheets4)
+library(tidyverse)
+
+gs4_deauth()
+galton_raw <- read_sheet(
+  ss = 'https://docs.google.com/spreadsheets/d/1ZA83iqkojBVX0bvtXQ-wuCyR6oswZwJMORRb-VK2ktM/edit?usp=sharing'
+)
+
+# Clean parental heights (remove "about")
+family_data <- galton_raw |> 
+  mutate(
+    Mother = as.numeric(str_extract(Mother, "-?\\d+\\.?\\d*")),
+    Father_height = Father + 60,
+    Mother_height = Mother + 60
+  )
+
+# Pivot sons into long format
+sons_long <- family_data |> 
+  select(family, Father_height, Mother_height, Sons) |> 
+  separate_rows(Sons, sep = ",") %>%
+  mutate(
+    child_height_change = as.numeric(str_trim(Sons)),
+    sex = "Son"
+  ) %>%
+  filter(!is.na(child_height_change)) %>%
+  select(-Sons)
+
+# Pivot daughters into long format
+daughters_long <- family_data %>%
+  select(family, Father_height, Mother_height, Daughters) %>%
+  separate_rows(Daughters, sep = ",") %>%
+  mutate(
+    child_height_change = as.numeric(str_trim(Daughters)),
+    sex = "Daughter"
+  ) %>%
+  filter(!is.na(child_height_change)) %>%
+  select(-Daughters)
+
+# Combine sons and daughters
+children_tidy <- bind_rows(sons_long, daughters_long) %>%
+  group_by(family, sex) %>%
+  mutate(child_number = row_number()) %>%
+  ungroup() %>%
+  mutate(
+    child_height = child_height_change + 60
+  ) %>%
+  select(family, sex, child_number, child_height,
+         Father_height, Mother_height)
+
+# View final tidy dataset
+children_tidy
+
+

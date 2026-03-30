@@ -1,0 +1,66 @@
+BUSIEST PASSENGER AIRPORTS PROJECT - PLANNING DOCUMENT
+
+PROJECT OVERVIEW
+
+Analyze and compare passenger traffic patterns across six major global airports (2020-2025). Document the recovery from pandemic disruptions and identify trends in passenger volume patterns.
+
+SMALLER GOALS BREAKDOWN
+
+GOAL 1: DATA VALIDATION AND VERIFICATION
+Verify all airport data is accurate, identify missing values, and check data types are correct.
+
+GOAL 2: EXPLORATORY DATA ANALYSIS
+Calculate summary statistics, ranking, and growth rates; identify key patterns (recovery timing, volatility).
+
+GOAL 3: CREATE TABLE VISUALIZATION
+Format and style a table with years as rows, airports as columns, and summary metrics (average, total, growth).
+
+GOAL 4: CREATE LINE PLOT VISUALIZATION
+Create multi-line plot showing passenger trends over time with color-coded airports and clear legends.
+
+GOAL 5: EXTRACT KEY INSIGHTS
+Identify which airport recovered fastest, had strongest growth, and what patterns reveal about global travel.
+
+GOAL 6: CREATE ALTERNATIVE VISUALIZATION
+Optional: Create a different chart type (faceted plots, bar chart, heatmap) to highlight different patterns.
+
+GOAL 7: DOCUMENT FINDINGS IN REPORT FORMAT
+Write a narrative summary explaining visualizations, insights, data sources, and conclusions.
+
+GOAL 8: CODE ORGANIZATION AND DOCUMENTATION
+Organize R script with clear sections, comments, and documentation for reproducibility.
+
+SEQUENTIAL WORKFLOW
+
+Step 1: Validate data (Goal 1) → Step 2: Explore patterns (Goal 2) → Step 3: Build table (Goal 3) → 
+Step 4: Build line plot (Goal 4) → Step 5: Extract insights (Goal 5) → Step 6: Alternative viz (Goal 6) → 
+Step 7: Write report (Goal 7) → Step 8: Polish code (Goal 8)
+
+DELIVERABLES CHECKLIST
+
+☐ All 36 data points verified or gaps documented
+☐ Summary statistics calculated (averages, rankings, growth rates)
+☐ Table with styling and summary columns created
+☐ Line plot showing trends for all 6 airports created
+☐ Alternative visualization created (optional)
+☐ List of 3-5 key insights identified with supporting evidence
+☐ Summary report written with findings and conclusions
+☐ R script organized with clear sections and documentation
+
+SUCCESS INDICATORS
+
+✓ Data validated and any issues documented
+✓ Patterns in passenger traffic visible and interpretable
+✓ Professional visualizations clearly communicate trends
+✓ Key insights identified and explained
+✓ Code organized and reproducible
+✓ Report answers: "How did passenger traffic evolve 2020-2025?" and identifies fastest recovery and strongest growth
+
+NOTES AND CONSIDERATIONS
+
+- Beijing Daxing (PKX) has missing 2020 and 2022 data (opened in 2019, still ramping up)
+- 2020 represents pandemic year with dramatically reduced travel
+- 2021-2022 show recovery period
+- 2023-2025 shows normalized/mature traffic levels
+- Different airports serve different regions/markets (may explain variation)
+- Seasonal patterns not visible in annual data (could discuss as limitation)
