@@ -1,0 +1,413 @@
+---
+title: "Airport Passenger Traffic Analysis"
+subtitle: "Comparing Global Aviation Hubs (2020-2025)"
+author: "Transportation Analytics Team"
+date: "April 8, 2026"
+format:
+  html:
+    toc: true
+    toc-depth: 2
+    number-sections: true
+    code-fold: true
+    embed-resources: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+```
+
+```{r load-libraries, include=FALSE}
+library(tidyverse)
+library(knitr)
+library(kableExtra)
+```
+
+## Introduction
+
+The global aviation industry experienced unprecedented disruption in 2020 due to the COVID-19 pandemic, resulting in dramatic declines in passenger traffic at major airports worldwide. This analysis examines recovery patterns across six of the world's busiest airports from 2020 through 2025, tracking how passenger volumes have rebounded and stabilized.
+
+The airports examined in this study represent critical aviation hubs across different regions and serve as indicators of regional economic recovery and international travel patterns. By comparing passenger traffic trends across six locations, we can identify which markets recovered fastest and how current traffic levels compare to pre-pandemic volumes.
+
+## Data Overview
+
+### Airports Under Study
+
+The analysis includes the following six major international airports:
+
+- **Hartsfield-Jackson Atlanta (ATL)**: The world's busiest airport by passenger volume, serving as a major U.S. domestic hub
+- **Frankfurt Airport (FRA)**: Europe's largest aviation hub, serving as a major international transfer point
+- **Beijing Daxing International (PKX)**: China's newest mega-airport, opened in 2019
+- **Dubai International (DXB)**: Middle East's primary aviation hub with extensive international routes
+- **Tokyo Haneda (HND)**: Asia's premier airport serving the Tokyo metropolitan region
+- **Los Angeles International (LAX)**: Major U.S. West Coast gateway to international destinations
+
+### Data Characteristics
+
+The dataset spans six years (2020–2025) and presents passenger volumes in millions. It captures the full trajectory from pandemic shutdown through recovery and stabilization phases. The inclusion of both domestic-heavy hubs (like ATL) and international-focused airports (like DXB and LAX) provides a comprehensive view of global aviation recovery patterns.
+
+```{r load-and-prepare-data, include=FALSE}
+# Create year vector
+years <- c(2020, 2021, 2022, 2023, 2024, 2025)
+
+# Passenger traffic data for each airport (in millions)
+ATL <- c(42.9, 75.7, 93.7, 104.7, 108.1, 106.3)   # Hartsfield-Jackson Atlanta
+FRA <- c(18.8, 24.8, 48.9, 59.4, 61.6, 63.2)      # Frankfurt Airport
+PKX <- c(NA, 25.1, NA, NA, 49.4, 53.6)            # Beijing Daxing International
+DXB <- c(25.8, 29.1, 66.1, 87.0, 92.3, 95.2)      # Dubai International
+HND <- c(31.1, 25.9, 50.3, 78.7, 85.9, 91.4)      # Tokyo Haneda
+LAX <- c(28.8, 48.0, 65.9, 75.1, 76.6, 73.7)      # Los Angeles International
+
+# Create data frame with all airport data
+airports_df <- data.frame(
+  Year = years,
+  ATL = ATL,
+  FRA = FRA,
+  PKX = PKX,
+  DXB = DXB,
+  HND = HND,
+  LAX = LAX
+)
+
+# Convert to long format for plotting
+airports_long <- airports_df %>%
+  pivot_longer(
+    cols = -Year,
+    names_to = "Airport",
+    values_to = "Passengers"
+  )
+
+# Map airport codes to full names
+airport_names <- c(
+  "ATL" = "Hartsfield-Jackson Atlanta",
+  "FRA" = "Frankfurt",
+  "PKX" = "Beijing Daxing",
+  "DXB" = "Dubai International",
+  "HND" = "Tokyo Haneda",
+  "LAX" = "Los Angeles International"
+)
+
+airports_long <- airports_long %>%
+  mutate(Airport_Full = airport_names[Airport])
+```
+
+## Exploratory Data Analysis
+
+### Data Quality and Completeness
+
+```{r data-quality-check, include=FALSE}
+missing_counts <- colSums(is.na(airports_df))
+missing_summary <- tibble(
+  Airport = names(missing_counts),
+  `Missing Values` = as.numeric(missing_counts)
+)
+```
+
+The dataset contains some missing values primarily in the Beijing Daxing International (PKX) airport records. This is expected, as PKX only became operational in late 2019 and reported less complete data during the 2020–2022 period as it was ramping up operations. All other airports have complete data for all six years measured.
+
+### Summary Statistics
+
+```{r summary-stats, include=FALSE}
+summary_data <- airports_long %>%
+  filter(!is.na(Passengers)) %>%
+  group_by(Airport_Full) %>%
+  summarize(
+    `Min (millions)` = min(Passengers, na.rm = TRUE),
+    `Max (millions)` = max(Passengers, na.rm = TRUE),
+    `Average (millions)` = mean(Passengers, na.rm = TRUE),
+    `2020 Volume` = first(Passengers),
+    `2025 Volume` = last(Passengers),
+    `Growth Rate (%)` = round(((last(Passengers) - first(Passengers)) / first(Passengers) * 100), 1),
+    .groups = 'drop'
+  ) %>%
+  arrange(desc(`Average (millions)`))
+```
+
+```{r display-summary-stats}
+knitr::kable(summary_data,
+             caption = "Summary Statistics by Airport (2020-2025)",
+             digits = 1) %>%
+  kable_styling(bootstrap_options = c("striped", "hover"),
+                full_width = TRUE) %>%
+  row_spec(0, bold = TRUE, background = "#3498db", color = "white")
+```
+
+## Key Findings
+
+### Comprehensive Data Table
+
+The following table presents annual passenger volumes for all airports together with average and total values:
+
+```{r create-summary-table, include=FALSE}
+table_data <- airports_df %>%
+  mutate(
+    Average = rowMeans(select(., -Year), na.rm = TRUE),
+    Total = rowSums(select(., -Year), na.rm = TRUE)
+  )
+```
+
+```{r display-table}
+kable(table_data,
+      caption = "Annual Passenger Traffic (Millions) by Airport, 2020-2025",
+      col.names = c("Year", "ATL", "FRA", "PKX", "DXB", "HND", "LAX", "Avg", "Total"),
+      digits = 1,
+      align = "c",
+      booktabs = TRUE) %>%
+  kable_styling(bootstrap_options = c("striped", "hover"),
+                full_width = TRUE,
+                latex_options = "scale_down") %>%
+  row_spec(0, bold = TRUE, background = "#3498db", color = "white") %>%
+  column_spec(1, bold = TRUE)
+```
+
+### Trend Analysis
+
+The recovery trajectory reveals three distinct phases:
+
+1. **Deep Contraction (2020)**: All airports experienced severe passenger decline from cancellations and travel restrictions. ATL saw traffic fall from historical highs to 42.9 million passengers.
+
+2. **Rapid Recovery (2021–2023)**: Vaccination campaigns and gradual reopening of international borders led to sharp increases in passenger volumes. Most airports nearly doubled traffic between 2020 and 2023.
+
+3. **Stabilization and Plateau (2024–2025)**: Growth rates slowed as airports approached or exceeded pre-pandemic capacity, with some showing slight declines due to economic pressures and seasonal variations.
+
+### Airport Performance Comparison
+
+```{r traffic-visualization, include=FALSE}
+plot_data <- airports_long %>%
+  filter(!is.na(Passengers))
+
+colors <- c("ATL" = "#e74c3c",
+            "FRA" = "#3498db", 
+            "PKX" = "#f39c12",
+            "DXB" = "#2ecc71",
+            "HND" = "#9b59b6",
+            "LAX" = "#1abc9c")
+```
+
+```{r display-plot}
+ggplot(plot_data, aes(x = Year, y = Passengers, color = Airport, group = Airport)) +
+  geom_line(size = 1) +
+  geom_point(size = 3) +
+  scale_color_manual(
+    values = colors,
+    labels = airport_names,
+    name = "Airport"
+  ) +
+  scale_x_continuous(breaks = years) +
+  labs(
+    title = "Annual Passenger Traffic by Airport (2020-2025)",
+    subtitle = "Post-pandemic recovery across six major global aviation hubs",
+    x = "Year",
+    y = "Passengers (Millions)",
+    caption = "Source: Airport passenger traffic data"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 14, face = "bold", margin = margin(b = 5)),
+    plot.subtitle = element_text(size = 11, color = "gray40", margin = margin(b = 10)),
+    legend.position = "right",
+    panel.grid.major = element_line(color = "gray90"),
+    panel.grid.minor = element_blank(),
+    axis.text = element_text(size = 10),
+    axis.title = element_text(size = 11, face = "bold")
+  )
+```
+
+### Notable Trends
+
+**Hartsfield-Jackson Atlanta** maintained its position as the world's busiest airport, recovering to 106 million passengers by 2025 with relatively stable growth throughout the recovery period.
+
+**Dubai International** demonstrated exceptional recovery momentum, growing from 25.8 million in 2020 to 95.2 million in 2025—a 269% increase—reflecting the airport's role as a global connecting hub serving Middle Eastern, Asian, and African markets.
+
+**Tokyo Haneda** showed dramatic recovery in 2023–2024 following Japan's reopening to international travel, growing from 25.9 million passengers in 2021 to 91.4 million in 2025.
+
+**Beijing Daxing International**, while newer and not fully operational throughout the period, continues to grow steadily as it captures increasing traffic from the Beijing metropolitan region and serves as China's ultra-modern international gateway.
+
+## Conclusion
+
+The six-year period from 2020 to 2025 documents one of aviation's most significant transformations in modern history. Starting from pandemic-induced collapse, the global aviation industry has demonstrated remarkable resilience and capacity for recovery. By 2025, the airports studied here collectively transported over 480 million passengers annually, showcasing the essential role aviation serves in global connectivity and commerce.
+
+The divergent recovery patterns across airports reflect regional variations in pandemic response policies, vaccination rates, and economic recovery speeds. Airports serving primarily international routes (like DXB and LAX) have shown faster recovery to or beyond pre-pandemic levels, while those transitioning from domestic to international service are showing continued rapid growth.
+
+As of 2025, the aviation industry appears to have achieved stability at these major hubs, with traffic levels representing a "new normal" that reflects both lasting changes in travel patterns and the enduring critical importance of major airport hubs to regional economies.
+
+---
+
+# Code Appendix
+
+## Complete R Code
+
+This appendix contains all code used in the analysis and visualization.
+
+```{r show-all-code, echo=TRUE, eval=FALSE}
+# ============================================================================
+# Airport Passenger Traffic Analysis (2020-2025)
+# ============================================================================
+# Purpose: Compare passenger traffic across 6 major airports globally
+# Data Source: Wikipedia - List of Busiest Airports by Passenger Traffic
+# ============================================================================
+
+library(tidyverse)
+library(knitr)
+library(kableExtra)
+
+# ============================================================================
+# DATA ENTRY SECTION
+# ============================================================================
+
+# Create year vector
+years <- c(2020, 2021, 2022, 2023, 2024, 2025)
+
+# Passenger traffic data for each airport (in millions)
+ATL <- c(42.9, 75.7, 93.7, 104.7, 108.1, 106.3)   # Hartsfield-Jackson Atlanta
+FRA <- c(18.8, 24.8, 48.9, 59.4, 61.6, 63.2)      # Frankfurt Airport
+PKX <- c(NA, 25.1, NA, NA, 49.4, 53.6)            # Beijing Daxing International
+
+DXB <- c(25.8, 29.1, 66.1, 87.0, 92.3, 95.2)      # Dubai International
+HND <- c(31.1, 25.9, 50.3, 78.7, 85.9, 91.4)      # Tokyo Haneda
+LAX <- c(28.8, 48.0, 65.9, 75.1, 76.6, 73.7)      # Los Angeles International
+
+# ============================================================================
+# DATA WRANGLING - Convert to tidy format
+# ============================================================================
+
+# Create a data frame with all airport data
+airports_df <- data.frame(
+  Year = years,
+  ATL = ATL,
+  FRA = FRA,
+  PKX = PKX,
+  DXB = DXB,
+  HND = HND,
+  LAX = LAX
+)
+
+# Convert from wide to long format for plotting
+airports_long <- airports_df %>%
+  pivot_longer(
+    cols = -Year,
+    names_to = "Airport",
+    values_to = "Passengers"
+  )
+
+# Map airport codes to full names for better visualization
+airport_names <- c(
+  "ATL" = "Hartsfield-Jackson Atlanta",
+  "FRA" = "Frankfurt",
+  "PKX" = "Beijing Daxing",
+  "DXB" = "Dubai International",
+  "HND" = "Tokyo Haneda",
+  "LAX" = "Los Angeles International"
+)
+
+airports_long <- airports_long %>%
+  mutate(Airport_Full = airport_names[Airport])
+
+# ============================================================================
+# EXPLORATORY DATA ANALYSIS
+# ============================================================================
+
+# Examine the data structure
+str(airports_df)
+head(airports_long)
+summary(airports_df)
+
+# Check for missing values
+missing_summary <- colSums(is.na(airports_df))
+print(missing_summary)
+
+# ============================================================================
+# VISUALIZATION 1: COMPARISON TABLE
+# ============================================================================
+
+# Create summary table with all years plus summary statistics
+table_data <- airports_df %>%
+  mutate(
+    Average = rowMeans(select(., -Year), na.rm = TRUE),
+    Total = rowSums(select(., -Year), na.rm = TRUE)
+  )
+
+# Create a nicely formatted table
+airport_table <- kable(table_data,
+                       caption = "Annual Passenger Traffic (Millions) by Airport, 2020-2025",
+                       col.names = c("Year", "ATL", "FRA", "PKX", 
+                                    "DXB", "HND", "LAX",
+                                    "Avg", "Total"),
+                       digits = 1,
+                       align = "c",
+                       booktabs = TRUE) %>%
+  kable_styling(bootstrap_options = c("striped", "hover"),
+                full_width = TRUE,
+                latex_options = "scale_down") %>%
+  row_spec(0, bold = TRUE, background = "#3498db", color = "white") %>%
+  column_spec(1, bold = TRUE)
+
+print(airport_table)
+
+# ============================================================================
+# VISUALIZATION 2: MULTI-LINE PLOT
+# ============================================================================
+
+# Create line plot for passenger traffic trends
+plot_data <- airports_long %>%
+  filter(!is.na(Passengers))
+
+# Define a professional color palette
+colors <- c("ATL" = "#e74c3c",
+            "FRA" = "#3498db", 
+            "PKX" = "#f39c12",
+            "DXB" = "#2ecc71",
+            "HND" = "#9b59b6",
+            "LAX" = "#1abc9c")
+
+# Create the plot
+ggplot(plot_data, aes(x = Year, y = Passengers, color = Airport, group = Airport)) +
+  geom_line(size = 1) +
+  geom_point(size = 3) +
+  scale_color_manual(
+    values = colors,
+    labels = airport_names,
+    name = "Airport"
+  ) +
+  scale_x_continuous(breaks = years) +
+  labs(
+    title = "Annual Passenger Traffic by Airport (2020-2025)",
+    subtitle = "Comparison of six major global airports with post-pandemic recovery visible",
+    x = "Year",
+    y = "Passengers (Millions)",
+    caption = "Source: Wikipedia - List of Busiest Airports by Passenger Traffic"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 14, face = "bold", margin = margin(b = 5)),
+    plot.subtitle = element_text(size = 11, color = "gray40", margin = margin(b = 10)),
+    legend.position = "right",
+    panel.grid.major = element_line(color = "gray90"),
+    panel.grid.minor = element_blank(),
+    axis.text = element_text(size = 10),
+    axis.title = element_text(size = 11, face = "bold")
+  )
+
+# Save the plot (optional)
+# ggsave("passenger_traffic_plot.png", width = 12, height = 6, dpi = 300)
+
+# ============================================================================
+# SUMMARY STATISTICS AND INSIGHTS
+# ============================================================================
+
+# Calculate and display key metrics
+summary_stats <- airports_long %>%
+  filter(!is.na(Passengers)) %>%
+  group_by(Airport) %>%
+  summarize(
+    Min_Year = years[which.min(Passengers)],
+    Max_Year = years[which.max(Passengers)],
+    Min_Passengers = min(Passengers, na.rm = TRUE),
+    Max_Passengers = max(Passengers, na.rm = TRUE),
+    Avg_Passengers = mean(Passengers, na.rm = TRUE),
+    Growth_Rate = ((last(Passengers) - first(Passengers)) / first(Passengers) * 100)
+  ) %>%
+  arrange(desc(Avg_Passengers))
+
+print("Summary Statistics by Airport:")
+print(summary_stats)
+```

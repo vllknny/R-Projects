@@ -1,0 +1,531 @@
+---
+title: "Monte Carlo Numerical Integration Analysis"
+subtitle: "Estimating Area Under Curves Using Random Sampling"
+author: "Kunal Ghosh"
+date: "April 8, 2026"
+format:
+  html:
+    toc: true
+    toc-depth: 2
+    number-sections: true
+    code-fold: true
+    embed-resources: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+```
+
+```{r load-libraries, include=FALSE}
+library(tidyverse)
+library(patchwork)
+```
+
+## Introduction
+
+Monte Carlo integration is a powerful numerical method for estimating the area under a curve through random sampling. Rather than using traditional calculus or analytical methods, this approach generates random points within a rectangular region and determines what proportion falls below the target curve. By scaling this proportion by the total area of the rectangle, we can estimate the integral with accuracy that improves as the number of samples increases.
+
+This analysis demonstrates Monte Carlo integration using the Beta distribution as our target function, specifically the probability density function of a Beta(2, 2) distribution. By computing the same integral at four different resolutions (100, 250, 1,000, and 5,000 sample points), we can observe how the quality of our area estimate improves with increased sampling resolution.
+
+## Methodology
+
+### The Monte Carlo Algorithm
+
+The Monte Carlo numerical integration process follows three fundamental steps:
+
+1. **Generate Random Points**: Create n random points uniformly distributed within a rectangular sampling region defined by bounds [x_min, x_max] and [y_min, y_max].
+
+2. **Classify Points**: For each random point, evaluate whether it falls above or below the target function curve by comparing its y-coordinate to the function value at its x-coordinate.
+
+3. **Estimate Area**: Calculate the proportion of points that fall below the curve, then multiply this proportion by the total area of the rectangle. This product approximates the area under the curve.
+
+### Target Function
+
+We apply this methodology to the Beta distribution probability density function:
+
+$$\text{Beta}(x; \alpha=2, \beta=2) = \frac{x^{\alpha-1}(1-x)^{\beta-1}}{B(\alpha,\beta)}$$
+
+where $x \in [0, 1]$. The Beta(2, 2) distribution has a symmetric, unimodal shape with its peak at x = 0.5, making it an excellent function for visualizing the Monte Carlo method and demonstrating convergence.
+
+### Simulation Parameters
+
+- **Sampling Region**: [0, 1] × [0, 2]
+- **Function Parameters**: α = 2, β = 2
+- **Sample Sizes**: 100, 250, 1,000, and 5,000 points
+
+## Results and Visualization
+
+The analysis generates four visualizations showing the Monte Carlo integration at different resolutions. Each plot displays:
+
+- **Blue Points**: Random points that fall below the probability density curve
+- **Red Points**: Random points that fall above the probability density curve
+- **Black Curve**: The exact Beta(2, 2) probability density function
+- **Subtitle Information**: Sample size and computed area estimate
+
+```{r create-simulation-data, include=FALSE}
+# Helper functions and simulation execution
+generate_coordinates <- function(n_samples, x_min, x_max, y_min, y_max) {
+  tibble(
+    x = runif(n_samples, min = x_min, max = x_max),
+    y = runif(n_samples, min = y_min, max = y_max)
+  )
+}
+
+flag_points_relative_to_function <- function(data, func) {
+  data %>%
+    mutate(
+      function_value = func(x),
+      is_above_function = y > function_value
+    )
+}
+
+estimate_integration <- function(data, x_min, x_max, y_min, y_max) {
+  rectangle_area <- (x_max - x_min) * (y_max - y_min)
+  points_below <- sum(!data$is_above_function)
+  total_points <- nrow(data)
+  
+  estimated_area <- rectangle_area * (points_below / total_points)
+  return(estimated_area)
+}
+
+monte_carlo_simulate <- function(n_samples, x_min, x_max, y_min, y_max, func) {
+  
+  coordinates <- tibble(
+    x = runif(n_samples, min = x_min, max = x_max),
+    y = runif(n_samples, min = y_min, max = y_max)
+  )
+  
+  simulation <- coordinates %>%
+    mutate(
+      function_value = func(x),
+      is_above_function = y > function_value
+    )
+  
+  rectangle_area <- (x_max - x_min) * (y_max - y_min)
+  points_below <- sum(!simulation$is_above_function)
+  total_points <- nrow(simulation)
+  estimated_area <- rectangle_area * (points_below / total_points)
+  percent_below <- (points_below / total_points) * 100
+  
+  simulation <- simulation %>%
+    mutate(
+      n_samples = n_samples,
+      x_min = x_min,
+      x_max = x_max,
+      y_min = y_min,
+      y_max = y_max,
+      rectangle_area = rectangle_area,
+      estimated_area = estimated_area,
+      points_below = points_below,
+      percent_below = percent_below
+    )
+  
+  return(simulation)
+}
+
+plot_monte_carlo_beta <- function(simulation_data, shape1_param, shape2_param, 
+                                   x_min, x_max, y_min, y_max) {
+  
+  area_estimate <- simulation_data$estimated_area[1]
+  n_samples <- simulation_data$n_samples[1]
+  
+  plot_data <- simulation_data %>%
+    select(x, y, function_value, is_above_function)
+  
+  x_curve <- seq(x_min, x_max, length.out = 1000)
+  curve_data <- tibble(
+    x = x_curve,
+    y = dbeta(x_curve, shape1 = shape1_param, shape2 = shape2_param)
+  )
+  
+  ggplot() +
+    geom_point(
+      data = plot_data %>% filter(is_above_function),
+      aes(x = x, y = y),
+      color = "#E74C3C",
+      alpha = 0.6,
+      size = 2,
+      shape = 16
+    ) +
+    geom_point(
+      data = plot_data %>% filter(!is_above_function),
+      aes(x = x, y = y),
+      color = "#3498DB",
+      alpha = 0.6,
+      size = 2,
+      shape = 16
+    ) +
+    geom_line(
+      data = curve_data,
+      aes(x = x, y = y),
+      color = "black",
+      size = 1.2
+    ) +
+    labs(
+      title = "Beta Distribution: dbeta(x, 2, 2)",
+      subtitle = paste(
+        "n =", format(n_samples, big.mark = ","),
+        "| Area Estimate:", round(area_estimate, 6)
+      ),
+      x = "x",
+      y = "Probability Density"
+    ) +
+    theme_minimal() +
+    theme(
+      plot.title = element_text(face = "bold", size = 11, hjust = 0.5),
+      plot.subtitle = element_text(size = 10, hjust = 0.5),
+      axis.text = element_text(size = 9),
+      axis.title = element_text(size = 10),
+      panel.grid.minor = element_blank(),
+      panel.border = element_rect(color = "gray80", fill = NA)
+    ) +
+    xlim(x_min, x_max) +
+    ylim(y_min, y_max)
+}
+
+# Parameters
+shape1_param <- 2
+shape2_param <- 2
+x_min <- 0
+x_max <- 1
+y_min <- 0
+y_max <- 2
+
+# Run simulations
+sim_100 <- monte_carlo_simulate(100, x_min, x_max, y_min, y_max, 
+                                 function(x) dbeta(x, shape1 = shape1_param, shape2 = shape2_param))
+sim_250 <- monte_carlo_simulate(250, x_min, x_max, y_min, y_max, 
+                                 function(x) dbeta(x, shape1 = shape1_param, shape2 = shape2_param))
+sim_1000 <- monte_carlo_simulate(1000, x_min, x_max, y_min, y_max, 
+                                  function(x) dbeta(x, shape1 = shape1_param, shape2 = shape2_param))
+sim_5000 <- monte_carlo_simulate(5000, x_min, x_max, y_min, y_max, 
+                                  function(x) dbeta(x, shape1 = shape1_param, shape2 = shape2_param))
+
+# Create plots
+plot_100 <- plot_monte_carlo_beta(sim_100, shape1_param, shape2_param, x_min, x_max, y_min, y_max)
+plot_250 <- plot_monte_carlo_beta(sim_250, shape1_param, shape2_param, x_min, x_max, y_min, y_max)
+plot_1000 <- plot_monte_carlo_beta(sim_1000, shape1_param, shape2_param, x_min, x_max, y_min, y_max)
+plot_5000 <- plot_monte_carlo_beta(sim_5000, shape1_param, shape2_param, x_min, x_max, y_min, y_max)
+```
+
+### Small Multiples Display
+
+The figure below shows the convergence of our Monte Carlo estimate as the sample size increases from 100 to 5,000 points. With fewer samples, the estimate is noisier and the scatter of points less evenly distributed. As the number of samples grows, the area estimate becomes more stable and accurate, and the points more uniformly fill the sampling region.
+
+```{r display-small-multiples}
+small_multiple <- plot_100 + plot_250 + plot_1000 + plot_5000 +
+  plot_layout(nrow = 2, ncol = 2) +
+  plot_annotation(
+    title = "Monte Carlo Integration of Beta Distribution",
+    subtitle = "dbeta(x, shape1 = 2, shape2 = 2) | Four Resolutions",
+    theme = theme(
+      plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+      plot.subtitle = element_text(size = 12, hjust = 0.5)
+    )
+  )
+
+print(small_multiple)
+```
+
+## Key Findings
+
+### Area Estimates by Resolution
+
+The Monte Carlo method provides increasingly accurate estimates as the number of sample points increases:
+
+```{r create-summary-table}
+summary_results <- tibble(
+  `Sample Size` = c(100, 250, 1000, 5000),
+  `Area Estimate` = c(
+    sim_100$estimated_area[1],
+    sim_250$estimated_area[1],
+    sim_1000$estimated_area[1],
+    sim_5000$estimated_area[1]
+  ),
+  `Points Below Curve` = c(
+    sim_100$points_below[1],
+    sim_250$points_below[1],
+    sim_1000$points_below[1],
+    sim_5000$points_below[1]
+  ),
+  `Percentage Below` = c(
+    sim_100$percent_below[1],
+    sim_250$percent_below[1],
+    sim_1000$percent_below[1],
+    sim_5000$percent_below[1]
+  )
+)
+
+knitr::kable(summary_results, digits = 4, caption = "Monte Carlo Integration Results by Sample Size")
+```
+
+The theoretical exact value for the definite integral of Beta(2, 2) over [0, 1] is 0.5. Our estimates converge toward this true value as the sample size increases, demonstrating the asymptotic property of Monte Carlo methods.
+
+## Conclusion
+
+This analysis demonstrates how the Monte Carlo method provides a practical and intuitive approach to numerical integration. The method's simplicity—randomly sample, check if each point is above or below the curve, and scale the proportion—belies its power and flexibility. Monte Carlo integration becomes particularly valuable when dealing with high-dimensional integrals or complex functions where traditional calculus methods are impractical.
+
+The convergence pattern observed here aligns with statistical theory: the error in Monte Carlo estimation decreases proportionally to 1/√n, where n is the number of samples. This one-over-square-root-n convergence rate is slower than some deterministic methods but provides a stable, intuitive framework for numerical integration.
+
+---
+
+# Code Appendix
+
+## Complete R Code
+
+This appendix contains all code used in the analysis.
+
+```{r show-all-code, echo=TRUE, eval=FALSE}
+# ============================================================================
+# MONTE CARLO NUMERICAL INTEGRATION - SMALL MULTIPLES ANALYSIS
+# ============================================================================
+# Project: Estimating area under curves using random sampling
+# Method: Monte Carlo integration at multiple resolutions
+# Function: Beta Distribution PDF
+# ============================================================================
+
+library(tidyverse)
+library(patchwork)
+
+# ============================================================================
+# STEP 1-3: HELPER FUNCTIONS (retained for reference)
+# ============================================================================
+
+generate_coordinates <- function(n_samples, x_min, x_max, y_min, y_max) {
+  tibble(
+    x = runif(n_samples, min = x_min, max = x_max),
+    y = runif(n_samples, min = y_min, max = y_max)
+  )
+}
+
+flag_points_relative_to_function <- function(data, func) {
+  data %>%
+    mutate(
+      function_value = func(x),
+      is_above_function = y > function_value
+    )
+}
+
+estimate_integration <- function(data, x_min, x_max, y_min, y_max) {
+  rectangle_area <- (x_max - x_min) * (y_max - y_min)
+  points_below <- sum(!data$is_above_function)
+  total_points <- nrow(data)
+  
+  estimated_area <- rectangle_area * (points_below / total_points)
+  return(estimated_area)
+}
+
+# ============================================================================
+# STEP 3B: MONTE CARLO SIMULATION FUNCTION
+# ============================================================================
+
+monte_carlo_simulate <- function(n_samples, x_min, x_max, y_min, y_max, func) {
+  
+  coordinates <- tibble(
+    x = runif(n_samples, min = x_min, max = x_max),
+    y = runif(n_samples, min = y_min, max = y_max)
+  )
+  
+  simulation <- coordinates %>%
+    mutate(
+      function_value = func(x),
+      is_above_function = y > function_value
+    )
+  
+  rectangle_area <- (x_max - x_min) * (y_max - y_min)
+  points_below <- sum(!simulation$is_above_function)
+  total_points <- nrow(simulation)
+  estimated_area <- rectangle_area * (points_below / total_points)
+  percent_below <- (points_below / total_points) * 100
+  
+  simulation <- simulation %>%
+    mutate(
+      n_samples = n_samples,
+      x_min = x_min,
+      x_max = x_max,
+      y_min = y_min,
+      y_max = y_max,
+      rectangle_area = rectangle_area,
+      estimated_area = estimated_area,
+      points_below = points_below,
+      percent_below = percent_below
+    )
+  
+  return(simulation)
+}
+
+# ============================================================================
+# STEP 4: CREATE REUSABLE PLOT FUNCTION
+# ============================================================================
+
+plot_monte_carlo_beta <- function(simulation_data, shape1_param, shape2_param, 
+                                   x_min, x_max, y_min, y_max) {
+  
+  area_estimate <- simulation_data$estimated_area[1]
+  n_samples <- simulation_data$n_samples[1]
+  
+  plot_data <- simulation_data %>%
+    select(x, y, function_value, is_above_function)
+  
+  x_curve <- seq(x_min, x_max, length.out = 1000)
+  curve_data <- tibble(
+    x = x_curve,
+    y = dbeta(x_curve, shape1 = shape1_param, shape2 = shape2_param)
+  )
+  
+  ggplot() +
+    geom_point(
+      data = plot_data %>% filter(is_above_function),
+      aes(x = x, y = y),
+      color = "#E74C3C",
+      alpha = 0.6,
+      size = 2,
+      shape = 16
+    ) +
+    geom_point(
+      data = plot_data %>% filter(!is_above_function),
+      aes(x = x, y = y),
+      color = "#3498DB",
+      alpha = 0.6,
+      size = 2,
+      shape = 16
+    ) +
+    geom_line(
+      data = curve_data,
+      aes(x = x, y = y),
+      color = "black",
+      size = 1.2
+    ) +
+    labs(
+      title = "Beta Distribution: dbeta(x, 2, 2)",
+      subtitle = paste(
+        "n =", format(n_samples, big.mark = ","),
+        "| Area Estimate:", round(area_estimate, 6)
+      ),
+      x = "x",
+      y = "Probability Density"
+    ) +
+    theme_minimal() +
+    theme(
+      plot.title = element_text(face = "bold", size = 11, hjust = 0.5),
+      plot.subtitle = element_text(size = 10, hjust = 0.5),
+      axis.text = element_text(size = 9),
+      axis.title = element_text(size = 10),
+      panel.grid.minor = element_blank(),
+      panel.border = element_rect(color = "gray80", fill = NA)
+    ) +
+    xlim(x_min, x_max) +
+    ylim(y_min, y_max)
+}
+
+# ============================================================================
+# STEP 5: CREATE FOUR PLOTS AT DIFFERENT RESOLUTIONS
+# ============================================================================
+
+shape1_param <- 2
+shape2_param <- 2
+
+x_min <- 0
+x_max <- 1
+y_min <- 0
+y_max <- 2
+
+sample_sizes <- c(100, 250, 1000, 5000)
+
+# Resolution 1: 100 points
+sim_100 <- monte_carlo_simulate(
+  n_samples = 100,
+  x_min = x_min,
+  x_max = x_max,
+  y_min = y_min,
+  y_max = y_max,
+  func = function(x) dbeta(x, shape1 = shape1_param, shape2 = shape2_param)
+)
+
+plot_100 <- plot_monte_carlo_beta(
+  sim_100,
+  shape1_param = shape1_param,
+  shape2_param = shape2_param,
+  x_min = x_min,
+  x_max = x_max,
+  y_min = y_min,
+  y_max = y_max
+)
+
+# Resolution 2: 250 points
+sim_250 <- monte_carlo_simulate(
+  n_samples = 250,
+  x_min = x_min,
+  x_max = x_max,
+  y_min = y_min,
+  y_max = y_max,
+  func = function(x) dbeta(x, shape1 = shape1_param, shape2 = shape2_param)
+)
+
+plot_250 <- plot_monte_carlo_beta(
+  sim_250,
+  shape1_param = shape1_param,
+  shape2_param = shape2_param,
+  x_min = x_min,
+  x_max = x_max,
+  y_min = y_min,
+  y_max = y_max
+)
+
+# Resolution 3: 1000 points
+sim_1000 <- monte_carlo_simulate(
+  n_samples = 1000,
+  x_min = x_min,
+  x_max = x_max,
+  y_min = y_min,
+  y_max = y_max,
+  func = function(x) dbeta(x, shape1 = shape1_param, shape2 = shape2_param)
+)
+
+plot_1000 <- plot_monte_carlo_beta(
+  sim_1000,
+  shape1_param = shape1_param,
+  shape2_param = shape2_param,
+  x_min = x_min,
+  x_max = x_max,
+  y_min = y_min,
+  y_max = y_max
+)
+
+# Resolution 4: 5000 points
+sim_5000 <- monte_carlo_simulate(
+  n_samples = 5000,
+  x_min = x_min,
+  x_max = x_max,
+  y_min = y_min,
+  y_max = y_max,
+  func = function(x) dbeta(x, shape1 = shape1_param, shape2 = shape2_param)
+)
+
+plot_5000 <- plot_monte_carlo_beta(
+  sim_5000,
+  shape1_param = shape1_param,
+  shape2_param = shape2_param,
+  x_min = x_min,
+  x_max = x_max,
+  y_min = y_min,
+  y_max = y_max
+)
+
+# ============================================================================
+# STEP 6: CREATE SMALL MULTIPLE WITH PATCHWORK
+# ============================================================================
+
+small_multiple <- plot_100 + plot_250 + plot_1000 + plot_5000 +
+  plot_layout(nrow = 2, ncol = 2) +
+  plot_annotation(
+    title = "Monte Carlo Integration of Beta Distribution",
+    subtitle = "dbeta(x, shape1 = 2, shape2 = 2) | Four Resolutions",
+    theme = theme(
+      plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+      plot.subtitle = element_text(size = 12, hjust = 0.5)
+    )
+  )
+
+print(small_multiple)
+```
